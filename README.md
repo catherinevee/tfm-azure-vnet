@@ -52,6 +52,73 @@ A comprehensive Terraform module for creating Azure Virtual Networks with advanc
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Resource Map
+
+This module creates the following Azure resources:
+
+### Core Networking Resources
+| Resource Type | Resource Name | Purpose | Conditional |
+|---------------|---------------|---------|-------------|
+| `azurerm_resource_group` | `vnet_rg` | Resource group for VNet resources | `create_resource_group = true` |
+| `azurerm_virtual_network` | `vnet` | Virtual networks | Per `virtual_networks` map |
+| `azurerm_subnet` | `subnets` | Subnets within VNets | Per subnet in `virtual_networks` |
+| `azurerm_network_security_group` | `nsg` | Network security groups | Per `network_security_groups` map |
+| `azurerm_network_security_rule` | `nsg_rules` | NSG security rules | Per rule in `network_security_groups` |
+| `azurerm_subnet_network_security_group_association` | `nsg_association` | NSG to subnet associations | Per subnet with `nsg_key` |
+
+### Routing Resources
+| Resource Type | Resource Name | Purpose | Conditional |
+|---------------|---------------|---------|-------------|
+| `azurerm_route_table` | `route_table` | Route tables | Per `route_tables` map |
+| `azurerm_route` | `route` | Routes within route tables | Per route in `route_tables` |
+| `azurerm_subnet_route_table_association` | `route_table_association` | Route table to subnet associations | Per subnet with `route_table_key` |
+
+### Gateway Resources
+| Resource Type | Resource Name | Purpose | Conditional |
+|---------------|---------------|---------|-------------|
+| `azurerm_public_ip` | `gateway_pip` | Public IPs for VPN/ExpressRoute gateways | Per `vpn_gateways` or `expressroute_gateways` |
+| `azurerm_virtual_network_gateway` | `vpn_gateway` | VPN gateways | Per `vpn_gateways` map |
+| `azurerm_virtual_network_gateway` | `expressroute_gateway` | ExpressRoute gateways | Per `expressroute_gateways` map |
+
+### Security Resources
+| Resource Type | Resource Name | Purpose | Conditional |
+|---------------|---------------|---------|-------------|
+| `azurerm_public_ip` | `firewall_pip` | Public IPs for Azure Firewall | Per `azure_firewall` map |
+| `azurerm_firewall` | `firewall` | Azure Firewall instances | Per `azure_firewall` map |
+
+### Network Virtual Appliances
+| Resource Type | Resource Name | Purpose | Conditional |
+|---------------|---------------|---------|-------------|
+| `azurerm_public_ip` | `nva_pip` | Public IPs for NVAs | Per `network_virtual_appliances` map |
+| `azurerm_network_interface` | `nva_nic` | Network interfaces for NVAs | Per NVA in `network_virtual_appliances` |
+
+### Resource Dependencies
+```
+Resource Group
+    ↓
+Virtual Networks
+    ↓
+Subnets ← Network Security Groups
+    ↓
+Route Tables
+    ↓
+Public IPs
+    ↓
+Gateways/Firewall/NVAs
+```
+
+### Output Resources
+The module provides comprehensive outputs for all created resources:
+- Resource group information (ID, name, location)
+- Virtual network details (IDs, names, address spaces)
+- Subnet information (IDs, names, configurations)
+- Network security group data (IDs, names, rules)
+- Route table information (IDs, names, routes)
+- Gateway resources (VPN, ExpressRoute, IDs, names)
+- Azure Firewall details (ID, name, configuration)
+- NVA information (network interfaces, public IPs)
+- Summary output with resource counts and status
+
 ## Usage
 
 ### Basic Example
