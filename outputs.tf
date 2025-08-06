@@ -1,22 +1,21 @@
 # Azure VNet Module - Outputs
-# This file contains all output definitions for the Azure VNet module
 
 # ==============================================================================
 # RESOURCE GROUP
 # ==============================================================================
 
 output "resource_group_id" {
-  description = "ID of the resource group"
+  description = "Resource group ID"
   value       = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].id : null
 }
 
 output "resource_group_name" {
-  description = "Name of the resource group"
+  description = "Resource group name"
   value       = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
 }
 
 output "resource_group_location" {
-  description = "Location of the resource group"
+  description = "Resource group location"
   value       = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].location : var.location
 }
 
@@ -25,7 +24,7 @@ output "resource_group_location" {
 # ==============================================================================
 
 output "virtual_networks" {
-  description = "Map of virtual networks created"
+  description = "Virtual networks created"
   value = {
     for k, v in azurerm_virtual_network.vnet : k => {
       id              = v.id
@@ -39,14 +38,14 @@ output "virtual_networks" {
 }
 
 output "virtual_network_ids" {
-  description = "Map of virtual network IDs"
+  description = "Virtual network IDs"
   value = {
     for k, v in azurerm_virtual_network.vnet : k => v.id
   }
 }
 
 output "virtual_network_names" {
-  description = "Map of virtual network names"
+  description = "Virtual network names"
   value = {
     for k, v in azurerm_virtual_network.vnet : k => v.name
   }
@@ -57,7 +56,7 @@ output "virtual_network_names" {
 # ==============================================================================
 
 output "subnets" {
-  description = "Map of subnets created"
+  description = "Subnets created"
   value = {
     for k, v in azurerm_subnet.subnets : k => {
       id                                    = v.id
@@ -73,14 +72,14 @@ output "subnets" {
 }
 
 output "subnet_ids" {
-  description = "Map of subnet IDs"
+  description = "Subnet IDs"
   value = {
     for k, v in azurerm_subnet.subnets : k => v.id
   }
 }
 
 output "subnet_names" {
-  description = "Map of subnet names"
+  description = "Subnet names"
   value = {
     for k, v in azurerm_subnet.subnets : k => v.name
   }
@@ -91,7 +90,7 @@ output "subnet_names" {
 # ==============================================================================
 
 output "network_security_groups" {
-  description = "Map of network security groups created"
+  description = "Network security groups created"
   value = {
     for k, v in azurerm_network_security_group.nsg : k => {
       id                = v.id
@@ -103,14 +102,14 @@ output "network_security_groups" {
 }
 
 output "network_security_group_ids" {
-  description = "Map of network security group IDs"
+  description = "Network security group IDs"
   value = {
     for k, v in azurerm_network_security_group.nsg : k => v.id
   }
 }
 
 output "network_security_group_names" {
-  description = "Map of network security group names"
+  description = "Network security group names"
   value = {
     for k, v in azurerm_network_security_group.nsg : k => v.name
   }
@@ -121,7 +120,7 @@ output "network_security_group_names" {
 # ==============================================================================
 
 output "route_tables" {
-  description = "Map of route tables created"
+  description = "Route tables created"
   value = {
     for k, v in azurerm_route_table.route_table : k => {
       id                = v.id
@@ -134,14 +133,14 @@ output "route_tables" {
 }
 
 output "route_table_ids" {
-  description = "Map of route table IDs"
+  description = "Route table IDs"
   value = {
     for k, v in azurerm_route_table.route_table : k => v.id
   }
 }
 
 output "route_table_names" {
-  description = "Map of route table names"
+  description = "Route table names"
   value = {
     for k, v in azurerm_route_table.route_table : k => v.name
   }
@@ -152,7 +151,7 @@ output "route_table_names" {
 # ==============================================================================
 
 output "gateway_public_ips" {
-  description = "Map of gateway public IP addresses created"
+  description = "Gateway public IP addresses"
   value = {
     for k, v in azurerm_public_ip.gateway_pip : k => {
       id                = v.id
@@ -168,7 +167,7 @@ output "gateway_public_ips" {
 }
 
 output "firewall_public_ips" {
-  description = "Map of firewall public IP addresses created"
+  description = "Firewall public IP addresses"
   value = {
     for k, v in azurerm_public_ip.firewall_pip : k => {
       id                = v.id
@@ -184,7 +183,7 @@ output "firewall_public_ips" {
 }
 
 output "nva_public_ips" {
-  description = "Map of NVA public IP addresses created"
+  description = "NVA public IP addresses"
   value = {
     for k, v in azurerm_public_ip.nva_pip : k => {
       id                = v.id
@@ -204,7 +203,7 @@ output "nva_public_ips" {
 # ==============================================================================
 
 output "vpn_gateways" {
-  description = "Map of VPN gateways created"
+  description = "VPN gateways created"
   value = {
     for k, v in azurerm_virtual_network_gateway.vpn_gateway : k => {
       id                = v.id
@@ -221,14 +220,14 @@ output "vpn_gateways" {
 }
 
 output "vpn_gateway_ids" {
-  description = "Map of VPN gateway IDs"
+  description = "VPN gateway IDs"
   value = {
     for k, v in azurerm_virtual_network_gateway.vpn_gateway : k => v.id
   }
 }
 
 output "expressroute_gateways" {
-  description = "Map of ExpressRoute gateways created"
+  description = "ExpressRoute gateways created"
   value = {
     for k, v in azurerm_virtual_network_gateway.expressroute_gateway : k => {
       id                = v.id
@@ -243,7 +242,7 @@ output "expressroute_gateways" {
 }
 
 output "expressroute_gateway_ids" {
-  description = "Map of ExpressRoute gateway IDs"
+  description = "ExpressRoute gateway IDs"
   value = {
     for k, v in azurerm_virtual_network_gateway.expressroute_gateway : k => v.id
   }
@@ -283,7 +282,7 @@ output "azure_firewall_name" {
 # ==============================================================================
 
 output "nva_network_interfaces" {
-  description = "Map of NVA network interfaces created"
+  description = "NVA network interfaces created"
   value = {
     for k, v in azurerm_network_interface.nva_nic : k => {
       id                = v.id
@@ -299,14 +298,14 @@ output "nva_network_interfaces" {
 }
 
 output "nva_network_interface_ids" {
-  description = "Map of NVA network interface IDs"
+  description = "NVA network interface IDs"
   value = {
     for k, v in azurerm_network_interface.nva_nic : k => v.id
   }
 }
 
 output "nva_network_interface_names" {
-  description = "Map of NVA network interface names"
+  description = "NVA network interface names"
   value = {
     for k, v in azurerm_network_interface.nva_nic : k => v.name
   }
@@ -317,7 +316,7 @@ output "nva_network_interface_names" {
 # ==============================================================================
 
 output "summary" {
-  description = "Summary of all resources created"
+  description = "Resource creation summary"
   value = {
     resource_groups_created = var.create_resource_group ? 1 : 0
     virtual_networks_count  = length(azurerm_virtual_network.vnet)

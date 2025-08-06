@@ -1,13 +1,5 @@
 # Azure VNet Module - Main Configuration
-# This module creates a comprehensive Azure networking infrastructure with support for:
-# - Single or multi-VNet deployments
-# - Site-to-Site VPN Gateways
-# - ExpressRoute Gateways
-# - Azure Firewall
-# - Network Virtual Appliances (NVAs)
-# - Public subnets (DMZ)
-# - Private subnets
-# - Route tables
+# Creates Azure networking infrastructure with VPN/ExpressRoute gateways, Azure Firewall, and NVAs
 
 # ==============================================================================
 # RESOURCE GROUP
@@ -65,7 +57,7 @@ resource "azurerm_subnet" "subnets" {
   virtual_network_name = azurerm_virtual_network.vnet[each.value.vnet_key].name
   address_prefixes     = each.value.address_prefixes
 
-  # Service endpoints
+  # Service endpoints for PaaS connectivity
   dynamic "service_endpoints" {
     for_each = each.value.service_endpoints != null ? each.value.service_endpoints : []
     content {
@@ -77,7 +69,7 @@ resource "azurerm_subnet" "subnets" {
   private_endpoint_network_policies_enabled = each.value.private_endpoint_network_policies_enabled
   private_link_service_network_policies_enabled = each.value.private_link_service_network_policies_enabled
 
-  # Delegations
+  # Service delegations (AKS, App Service, etc.)
   dynamic "delegation" {
     for_each = each.value.delegations != null ? each.value.delegations : []
     content {
@@ -113,7 +105,6 @@ resource "azurerm_network_security_group" "nsg" {
   })
 }
 
-# NSG Rules
 resource "azurerm_network_security_rule" "nsg_rules" {
   for_each = {
     for rule in local.all_nsg_rules : "${rule.nsg_key}.${rule.name}" => rule
@@ -128,23 +119,21 @@ resource "azurerm_network_security_rule" "nsg_rules" {
   destination_port_range      = each.value.destination_port_range
   source_address_prefix       = each.value.source_address_prefix
   destination_address_prefix  = each.value.destination_address_prefix
-  resource_group_name         = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
-  network_security_group_name = azurerm_network_security_group.nsg[each.value.nsg_key].name
-
-  # Optional fields
   source_port_ranges          = each.value.source_port_ranges
   destination_port_ranges     = each.value.destination_port_ranges
   source_address_prefixes     = each.value.source_address_prefixes
   destination_address_prefixes = each.value.destination_address_prefixes
+  resource_group_name         = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
+  network_security_group_name = azurerm_network_security_group.nsg[each.value.nsg_key].name
 }
 
-# NSG Subnet Associations
 resource "azurerm_subnet_network_security_group_association" "nsg_association" {
   for_each = {
-    for association in local.nsg_associations : "${association.subnet_key}" => association
+    for subnet in local.all_subnets : "${subnet.vnet_key}.${subnet.name}" => subnet
+    if subnet.nsg_key != null
   }
 
-  subnet_id                 = azurerm_subnet.subnets[each.value.subnet_key].id
+  subnet_id                 = azurerm_subnet.subnets["${each.value.vnet_key}.${each.value.name}"].id
   network_security_group_id = azurerm_network_security_group.nsg[each.value.nsg_key].id
 }
 
@@ -166,7 +155,6 @@ resource "azurerm_route_table" "route_table" {
   })
 }
 
-# Route Table Routes
 resource "azurerm_route" "route" {
   for_each = {
     for route in local.all_routes : "${route.route_table_key}.${route.name}" => route
@@ -180,13 +168,13 @@ resource "azurerm_route" "route" {
   next_hop_in_ip_address = each.value.next_hop_in_ip_address
 }
 
-# Route Table Subnet Associations
 resource "azurerm_subnet_route_table_association" "route_table_association" {
   for_each = {
-    for association in local.route_table_associations : "${association.subnet_key}" => association
+    for subnet in local.all_subnets : "${subnet.vnet_key}.${subnet.name}" => subnet
+    if subnet.route_table_key != null
   }
 
-  subnet_id      = azurerm_subnet.subnets[each.value.subnet_key].id
+  subnet_id      = azurerm_subnet.subnets["${each.value.vnet_key}.${each.value.name}"].id
   route_table_id = azurerm_route_table.route_table[each.value.route_table_key].id
 }
 
@@ -194,14 +182,13 @@ resource "azurerm_subnet_route_table_association" "route_table_association" {
 # PUBLIC IP ADDRESSES
 # ==============================================================================
 
-# Gateway Public IPs
 resource "azurerm_public_ip" "gateway_pip" {
   for_each = {
-    for pip in local.gateway_public_ips : "${pip.gateway_key}.${pip.name}" => pip
+    for gateway in local.all_gateway_public_ips : gateway.key => gateway
   }
 
-  name                = each.value.name
-  location            = each.value.location != null ? each.value.location : var.location
+  name                = each.value.pip_name
+  location            = each.value.location
   resource_group_name = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
   allocation_method   = each.value.allocation_method
   sku                 = each.value.sku
@@ -211,13 +198,11 @@ resource "azurerm_public_ip" "gateway_pip" {
   ip_version          = each.value.ip_version
 
   tags = merge(var.tags, each.value.tags, {
-    "pip_name" = each.value.name
-    "gateway"  = each.value.gateway_key
-    "module"   = "azure-vnet"
+    "gateway_name" = each.value.gateway_name
+    "module"       = "azure-vnet"
   })
 }
 
-# Firewall Public IPs
 resource "azurerm_public_ip" "firewall_pip" {
   for_each = var.azure_firewall != null ? var.azure_firewall.public_ips : {}
 
@@ -232,20 +217,18 @@ resource "azurerm_public_ip" "firewall_pip" {
   ip_version          = each.value.ip_version
 
   tags = merge(var.tags, each.value.tags, {
-    "pip_name" = each.value.name
-    "firewall" = "azure-firewall"
-    "module"   = "azure-vnet"
+    "firewall_name" = var.azure_firewall.name
+    "module"        = "azure-vnet"
   })
 }
 
-# NVA Public IPs
 resource "azurerm_public_ip" "nva_pip" {
   for_each = {
-    for pip in local.nva_public_ips : "${pip.nva_key}.${pip.name}" => pip
+    for nva in local.all_nva_public_ips : "${nva.nva_key}.${nva.name}" => nva
   }
 
   name                = each.value.name
-  location            = each.value.location != null ? each.value.location : var.location
+  location            = each.value.location
   resource_group_name = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
   allocation_method   = each.value.allocation_method
   sku                 = each.value.sku
@@ -255,8 +238,7 @@ resource "azurerm_public_ip" "nva_pip" {
   ip_version          = each.value.ip_version
 
   tags = merge(var.tags, each.value.tags, {
-    "pip_name" = each.value.name
-    "nva"      = each.value.nva_key
+    "nva_name" = each.value.nva_name
     "module"   = "azure-vnet"
   })
 }
@@ -265,43 +247,46 @@ resource "azurerm_public_ip" "nva_pip" {
 # VIRTUAL NETWORK GATEWAYS
 # ==============================================================================
 
-# VPN Gateway
 resource "azurerm_virtual_network_gateway" "vpn_gateway" {
   for_each = var.vpn_gateways
 
   name                = each.value.name
   location            = each.value.location != null ? each.value.location : var.location
   resource_group_name = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
+  type                = "Vpn"
+  vpn_type            = each.value.vpn_type
+  sku                 = each.value.sku
+  generation          = each.value.generation
+  enable_bgp          = each.value.enable_bgp
+  active_active       = each.value.active_active
 
-  type     = "Vpn"
-  vpn_type = each.value.vpn_type
-  sku      = each.value.sku
-  generation = each.value.generation
-
+  # Primary IP configuration
   ip_configuration {
     name                          = each.value.ip_configuration.name
-    public_ip_address_id          = azurerm_public_ip.gateway_pip["${each.key}.${each.value.ip_configuration.name}"].id
+    public_ip_address_id          = azurerm_public_ip.gateway_pip[each.key].id
     private_ip_address_allocation = each.value.ip_configuration.private_ip_address_allocation
     subnet_id                     = azurerm_subnet.subnets[each.value.ip_configuration.subnet_key].id
   }
 
+  # Secondary IP configuration for active-active
   dynamic "ip_configuration" {
     for_each = each.value.ip_configuration.secondary_configuration != null ? [each.value.ip_configuration.secondary_configuration] : []
     content {
       name                          = ip_configuration.value.name
-      public_ip_address_id          = azurerm_public_ip.gateway_pip["${each.key}.${ip_configuration.value.name}"].id
+      public_ip_address_id          = azurerm_public_ip.gateway_pip["${each.key}_secondary"].id
       private_ip_address_allocation = ip_configuration.value.private_ip_address_allocation
       subnet_id                     = azurerm_subnet.subnets[ip_configuration.value.subnet_key].id
     }
   }
 
+  # VPN client configuration
   dynamic "vpn_client_configuration" {
     for_each = each.value.vpn_client_configuration != null ? [each.value.vpn_client_configuration] : []
     content {
-      address_space = vpn_client_configuration.value.address_space
-      aad_audience  = vpn_client_configuration.value.aad_audience
-      aad_issuer    = vpn_client_configuration.value.aad_issuer
-      aad_tenant    = vpn_client_configuration.value.aad_tenant
+      address_space        = vpn_client_configuration.value.address_space
+      aad_audience        = vpn_client_configuration.value.aad_audience
+      aad_issuer          = vpn_client_configuration.value.aad_issuer
+      aad_tenant          = vpn_client_configuration.value.aad_tenant
       radius_server_address = vpn_client_configuration.value.radius_server_address
       radius_server_secret  = vpn_client_configuration.value.radius_server_secret
       vpn_auth_types        = vpn_client_configuration.value.vpn_auth_types
@@ -309,6 +294,7 @@ resource "azurerm_virtual_network_gateway" "vpn_gateway" {
     }
   }
 
+  # BGP settings
   dynamic "bgp_settings" {
     for_each = each.value.bgp_settings != null ? [each.value.bgp_settings] : []
     content {
@@ -320,9 +306,6 @@ resource "azurerm_virtual_network_gateway" "vpn_gateway" {
       peer_weight = bgp_settings.value.peer_weight
     }
   }
-
-  enable_bgp    = each.value.enable_bgp
-  active_active = each.value.active_active
 
   tags = merge(var.tags, each.value.tags, {
     "gateway_name" = each.value.name
@@ -331,25 +314,25 @@ resource "azurerm_virtual_network_gateway" "vpn_gateway" {
   })
 }
 
-# ExpressRoute Gateway
 resource "azurerm_virtual_network_gateway" "expressroute_gateway" {
   for_each = var.expressroute_gateways
 
   name                = each.value.name
   location            = each.value.location != null ? each.value.location : var.location
   resource_group_name = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
+  type                = "ExpressRoute"
+  sku                 = each.value.sku
+  enable_bgp          = each.value.enable_bgp
 
-  type     = "ExpressRoute"
-  vpn_type = "RouteBased"
-  sku      = each.value.sku
-
+  # IP configuration
   ip_configuration {
     name                          = each.value.ip_configuration.name
-    public_ip_address_id          = azurerm_public_ip.gateway_pip["${each.key}.${each.value.ip_configuration.name}"].id
+    public_ip_address_id          = azurerm_public_ip.gateway_pip[each.key].id
     private_ip_address_allocation = each.value.ip_configuration.private_ip_address_allocation
     subnet_id                     = azurerm_subnet.subnets[each.value.ip_configuration.subnet_key].id
   }
 
+  # BGP settings
   dynamic "bgp_settings" {
     for_each = each.value.bgp_settings != null ? [each.value.bgp_settings] : []
     content {
@@ -361,8 +344,6 @@ resource "azurerm_virtual_network_gateway" "expressroute_gateway" {
       peer_weight = bgp_settings.value.peer_weight
     }
   }
-
-  enable_bgp = each.value.enable_bgp
 
   tags = merge(var.tags, each.value.tags, {
     "gateway_name" = each.value.name
@@ -389,6 +370,7 @@ resource "azurerm_firewall" "firewall" {
   threat_intel_mode   = var.azure_firewall.threat_intel_mode
   zones               = var.azure_firewall.zones
 
+  # IP configurations
   dynamic "ip_configuration" {
     for_each = var.azure_firewall.ip_configurations
     content {
@@ -398,6 +380,7 @@ resource "azurerm_firewall" "firewall" {
     }
   }
 
+  # Management IP configuration
   dynamic "management_ip_configuration" {
     for_each = var.azure_firewall.management_ip_configuration != null ? [var.azure_firewall.management_ip_configuration] : []
     content {
@@ -414,19 +397,22 @@ resource "azurerm_firewall" "firewall" {
 }
 
 # ==============================================================================
-# NETWORK VIRTUAL APPLIANCES (NVAs)
+# NETWORK VIRTUAL APPLIANCES
 # ==============================================================================
 
-# NVA Network Interfaces
 resource "azurerm_network_interface" "nva_nic" {
   for_each = {
-    for nic in local.nva_network_interfaces : "${nic.nva_key}.${nic.name}" => nic
+    for nic in local.all_nva_nics : "${nic.nva_key}.${nic.name}" => nic
   }
 
-  name                = each.value.name
-  location            = each.value.location != null ? each.value.location : var.location
-  resource_group_name = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
+  name                          = each.value.name
+  location                      = each.value.location
+  resource_group_name           = var.create_resource_group ? azurerm_resource_group.vnet_rg[0].name : var.resource_group_name
+  enable_accelerated_networking = each.value.enable_accelerated_networking
+  enable_ip_forwarding          = each.value.enable_ip_forwarding
+  dns_servers                   = each.value.dns_servers
 
+  # IP configurations
   dynamic "ip_configuration" {
     for_each = each.value.ip_configurations
     content {
@@ -434,24 +420,20 @@ resource "azurerm_network_interface" "nva_nic" {
       subnet_id                     = azurerm_subnet.subnets[ip_configuration.value.subnet_key].id
       private_ip_address_allocation = ip_configuration.value.private_ip_address_allocation
       private_ip_address            = ip_configuration.value.private_ip_address
-      public_ip_address_id          = ip_configuration.value.public_ip_address_id != null ? azurerm_public_ip.nva_pip["${each.value.nva_key}.${ip_configuration.value.public_ip_name}"].id : null
+      public_ip_address_id          = ip_configuration.value.public_ip_name != null ? azurerm_public_ip.nva_pip["${each.value.nva_key}.${ip_configuration.value.public_ip_name}"].id : null
       primary                       = ip_configuration.value.primary
     }
   }
 
-  enable_accelerated_networking = each.value.enable_accelerated_networking
-  enable_ip_forwarding          = each.value.enable_ip_forwarding
-  dns_servers                   = each.value.dns_servers
-
   tags = merge(var.tags, each.value.tags, {
+    "nva_name" = each.value.nva_name
     "nic_name" = each.value.name
-    "nva"      = each.value.nva_key
     "module"   = "azure-vnet"
   })
 }
 
 # ==============================================================================
-# LOCAL VALUES
+# LOCALS
 # ==============================================================================
 
 locals {
@@ -473,16 +455,6 @@ locals {
     ]
   ])
 
-  # Create NSG associations
-  nsg_associations = flatten([
-    for vnet_key, vnet in var.virtual_networks : [
-      for subnet in vnet.subnets : {
-        subnet_key = "${vnet_key}.${subnet.name}"
-        nsg_key    = subnet.nsg_key
-      } if subnet.nsg_key != null
-    ]
-  ])
-
   # Flatten all routes
   all_routes = flatten([
     for rt_key, rt in var.route_tables : [
@@ -492,39 +464,63 @@ locals {
     ]
   ])
 
-  # Create route table associations
-  route_table_associations = flatten([
-    for vnet_key, vnet in var.virtual_networks : [
-      for subnet in vnet.subnets : {
-        subnet_key    = "${vnet_key}.${subnet.name}"
-        route_table_key = subnet.route_table_key
-      } if subnet.route_table_key != null
+  # Flatten all gateway public IPs
+  all_gateways = flatten([
+    # VPN gateways
+    for gw_key, gw in var.vpn_gateways : [
+      {
+        key              = gw_key
+        gateway_name     = gw.name
+        location         = gw.location != null ? gw.location : var.location
+        allocation_method = "Static"
+        sku              = "Standard"
+        zones            = null
+        domain_name_label = null
+        reverse_fqdn     = null
+        ip_version       = "IPv4"
+        tags             = gw.tags
+      }
+    ],
+    # ExpressRoute gateways
+    for gw_key, gw in var.expressroute_gateways : [
+      {
+        key              = gw_key
+        gateway_name     = gw.name
+        location         = gw.location != null ? gw.location : var.location
+        allocation_method = "Static"
+        sku              = "Standard"
+        zones            = null
+        domain_name_label = null
+        reverse_fqdn     = null
+        ip_version       = "IPv4"
+        tags             = gw.tags
+      }
     ]
   ])
 
-  # Flatten gateway public IPs
-  gateway_public_ips = flatten([
-    for gateway_key, gateway in var.vpn_gateways : [
-      for pip in [gateway.ip_configuration] : merge(pip, {
-        gateway_key = gateway_key
-      })
-    ]
-  ])
+  # Generate public IP names for gateways
+  all_gateway_public_ips = [
+    for gw in local.all_gateways : merge(gw, {
+      pip_name = "pip-${gw.gateway_name}"
+    })
+  ]
 
-  # Flatten NVA public IPs
-  nva_public_ips = flatten([
+  # Flatten all NVA public IPs
+  all_nva_public_ips = flatten([
     for nva_key, nva in var.network_virtual_appliances : [
       for pip in nva.public_ips : merge(pip, {
-        nva_key = nva_key
+        nva_key  = nva_key
+        nva_name = nva.name
       })
     ]
   ])
 
-  # Flatten NVA network interfaces
-  nva_network_interfaces = flatten([
+  # Flatten all NVA network interfaces
+  all_nva_nics = flatten([
     for nva_key, nva in var.network_virtual_appliances : [
       for nic in nva.network_interfaces : merge(nic, {
-        nva_key = nva_key
+        nva_key  = nva_key
+        nva_name = nva.name
       })
     ]
   ])

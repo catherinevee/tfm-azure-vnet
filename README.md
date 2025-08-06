@@ -1,20 +1,20 @@
 # Azure VNet Terraform Module
 
-A comprehensive Terraform module for creating Azure Virtual Networks with advanced networking features including Site-to-Site VPN Gateways, ExpressRoute Gateways, Azure Firewall, Network Virtual Appliances (NVAs), and complex routing configurations.
+Terraform module for Azure Virtual Networks with VPN/ExpressRoute gateways, Azure Firewall, and network virtual appliances. Supports single VNet and hub-spoke architectures.
 
 ## Features
 
-- **Single or Multi-VNet Support**: Create one or multiple virtual networks with customizable address spaces
-- **Site-to-Site VPN Gateways**: Configure VPN gateways with BGP support and client configurations
-- **ExpressRoute Gateways**: Set up ExpressRoute gateways for private connectivity
-- **Azure Firewall Integration**: Deploy and configure Azure Firewall with custom policies
-- **Network Virtual Appliances (NVAs)**: Support for custom network appliances with multiple network interfaces
-- **Public Subnets (DMZ)**: Create public-facing subnets with appropriate security
-- **Private Subnets**: Secure private subnets for internal resources
-- **Route Tables**: Custom routing with support for virtual appliances and internet routing
-- **Network Security Groups**: Comprehensive security rules with customizable priorities
-- **Service Endpoints**: Enable service endpoints for Azure PaaS services
-- **Subnet Delegations**: Support for service delegations (e.g., AKS, App Service)
+- Single or multi-VNet deployments with customizable address spaces
+- Site-to-Site VPN gateways with BGP support
+- ExpressRoute gateways for private connectivity
+- Azure Firewall with custom policies
+- Network virtual appliances with multiple network interfaces
+- Public subnets (DMZ) with appropriate security
+- Private subnets for internal resources
+- Custom route tables for traffic control
+- Network security groups with configurable rules
+- Service endpoints for Azure PaaS services
+- Subnet delegations for managed services (AKS, App Service)
 
 ## Architecture Examples
 
@@ -31,7 +31,7 @@ A comprehensive Terraform module for creating Azure Virtual Networks with advanc
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Advanced Hub-Spoke Architecture
+### Hub-Spoke Architecture
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                  Hub-Spoke Architecture                     │
@@ -53,8 +53,6 @@ A comprehensive Terraform module for creating Azure Virtual Networks with advanc
 ```
 
 ## Resource Map
-
-This module creates the following Azure resources:
 
 ### Core Networking Resources
 | Resource Type | Resource Name | Purpose | Conditional |
@@ -106,18 +104,6 @@ Public IPs
     ↓
 Gateways/Firewall/NVAs
 ```
-
-### Output Resources
-The module provides comprehensive outputs for all created resources:
-- Resource group information (ID, name, location)
-- Virtual network details (IDs, names, address spaces)
-- Subnet information (IDs, names, configurations)
-- Network security group data (IDs, names, rules)
-- Route table information (IDs, names, routes)
-- Gateway resources (VPN, ExpressRoute, IDs, names)
-- Azure Firewall details (ID, name, configuration)
-- NVA information (network interfaces, public IPs)
-- Summary output with resource counts and status
 
 ## Usage
 

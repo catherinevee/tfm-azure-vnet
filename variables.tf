@@ -1,29 +1,28 @@
 # Azure VNet Module - Variables
-# This file contains all variable definitions for the Azure VNet module
 
 # ==============================================================================
 # BASIC CONFIGURATION
 # ==============================================================================
 
 variable "create_resource_group" {
-  description = "Whether to create a new resource group for the VNet resources"
+  description = "Create a new resource group for VNet resources"
   type        = bool
   default     = true
 }
 
 variable "resource_group_name" {
-  description = "Name of the resource group (created if create_resource_group is true, otherwise must exist)"
+  description = "Resource group name (created if create_resource_group is true, otherwise must exist)"
   type        = string
 }
 
 variable "location" {
-  description = "Azure region where resources will be created"
+  description = "Azure region for resource deployment"
   type        = string
   default     = "East US"
 }
 
 variable "tags" {
-  description = "Tags to apply to all resources"
+  description = "Tags applied to all resources"
   type        = map(string)
   default     = {}
 }
@@ -33,7 +32,7 @@ variable "tags" {
 # ==============================================================================
 
 variable "virtual_networks" {
-  description = "Map of virtual networks to create"
+  description = "Virtual networks to create"
   type = map(object({
     name                    = string
     location                = optional(string)
@@ -69,7 +68,7 @@ variable "virtual_networks" {
 # ==============================================================================
 
 variable "network_security_groups" {
-  description = "Map of network security groups to create"
+  description = "Network security groups to create"
   type = map(object({
     name     = string
     location = optional(string)
@@ -98,7 +97,7 @@ variable "network_security_groups" {
 # ==============================================================================
 
 variable "route_tables" {
-  description = "Map of route tables to create"
+  description = "Route tables to create"
   type = map(object({
     name                          = string
     location                      = optional(string)
@@ -119,7 +118,7 @@ variable "route_tables" {
 # ==============================================================================
 
 variable "vpn_gateways" {
-  description = "Map of VPN gateways to create"
+  description = "VPN gateways to create"
   type = map(object({
     name     = string
     location = optional(string)
@@ -166,7 +165,7 @@ variable "vpn_gateways" {
 # ==============================================================================
 
 variable "expressroute_gateways" {
-  description = "Map of ExpressRoute gateways to create"
+  description = "ExpressRoute gateways to create"
   type = map(object({
     name     = string
     location = optional(string)
@@ -237,7 +236,7 @@ variable "azure_firewall" {
 # ==============================================================================
 
 variable "network_virtual_appliances" {
-  description = "Map of Network Virtual Appliances (NVAs) to create"
+  description = "Network virtual appliances to create"
   type = map(object({
     name     = string
     location = optional(string)
